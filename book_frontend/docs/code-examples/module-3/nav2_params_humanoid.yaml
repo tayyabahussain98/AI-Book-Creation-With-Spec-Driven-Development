@@ -1,0 +1,113 @@
+# Nav2 Parameters for Humanoid Robot
+# Conceptual configuration showing key differences from wheeled robot navigation
+
+bt_navigator:
+  ros__parameters:
+    # Behavior Tree tick rate (lower for humanoid to allow stabilization)
+    default_bt_xml_filename: "navigate_w_replanning_and_recovery.xml"
+    plugin_lib_names:
+    - nav2_compute_path_to_pose_action_bt_node
+    - nav2_follow_path_action_bt_node
+    - nav2_back_up_action_bt_node  # Recovery behavior
+    - nav2_spin_action_bt_node     # Recovery behavior
+    transform_tolerance: 0.1  # Increased for bipedal motion delays
+
+controller_server:
+  ros__parameters:
+    controller_frequency: 10.0  # Lower than wheeled (20 Hz) - footstep replanning overhead
+    controller_plugin_types: ["dwb_core::DWBLocalPlanner"]
+
+    # DWB (Dynamic Window Approach) parameters for humanoid
+    DWBLocalPlanner:
+      # Velocity limits (much slower than wheeled robots)
+      max_vel_x: 0.4       # m/s (vs 0.8-1.5 for wheeled)
+      min_vel_x: -0.2      # Allow backward walking (slow)
+      max_vel_y: 0.0       # Humanoids don't strafe (differential drive-like)
+      min_vel_y: 0.0
+      max_vel_theta: 0.5   # rad/s (vs 1.0-2.0 for wheeled) - slower turning for stability
+      min_vel_theta: -0.5
+
+      # Acceleration limits (conservative for balance)
+      acc_lim_x: 0.3       # m/s² (vs 1.0+ for wheeled)
+      acc_lim_y: 0.0
+      acc_lim_theta: 0.5   # rad/s² (vs 2.0+ for wheeled)
+
+      # Footprint geometry (humanoid base - bipedal stance)
+      footprint: "[[0.15, 0.15], [0.15, -0.15], [-0.15, -0.15], [-0.15, 0.15]]"
+      # Rectangular 0.3m x 0.3m footprint (narrower than typical wheeled robots)
+
+      # ZMP (Zero Moment Point) stability constraint (humanoid-specific)
+      # In practice, this would integrate with footstep planner
+      min_speed_xy: 0.05   # Minimum speed to maintain dynamic balance
+
+      # Trajectory scoring weights
+      path_distance_bias: 32.0      # Follow global path
+      goal_distance_bias: 20.0      # Progress toward goal
+      occdist_scale: 0.02           # Obstacle avoidance (lower - cautious)
+      forward_point_distance: 0.15  # Lookahead for scoring (shorter for humanoid)
+
+      # Trajectory generation
+      sim_time: 1.5                 # Predict 1.5s ahead (vs 2-3s for wheeled)
+      vx_samples: 5                 # Fewer samples (slower planning for footsteps)
+      vy_samples: 1                 # No lateral motion
+      vtheta_samples: 10            # Angular velocity samples
+
+local_costmap:
+  ros__parameters:
+    update_frequency: 5.0   # Lower than wheeled (10 Hz) - less responsive but stable
+    publish_frequency: 2.0
+    rolling_window: true
+    width: 3                # 3m x 3m local window (smaller for safety)
+    height: 3
+    resolution: 0.05        # 5cm resolution
+    robot_radius: 0.2       # Safety margin beyond footprint (vs 0.1-0.15 for wheeled)
+
+    plugins: ["voxel_layer", "inflation_layer"]
+
+    # Voxel layer (3D obstacles - important for humanoids to detect low/high obstacles)
+    voxel_layer:
+      plugin: "nav2_costmap_2d::VoxelLayer"
+      enabled: True
+      max_obstacle_height: 2.0  # Detect obstacles up to 2m (head height)
+      origin_z: 0.0
+      z_resolution: 0.05
+      z_voxels: 16
+
+    # Inflation layer (wider safety margin for humanoids)
+    inflation_layer:
+      plugin: "nav2_costmap_2d::InflationLayer"
+      cost_scaling_factor: 5.0    # Steeper cost gradient (vs 3.0 for wheeled)
+      inflation_radius: 0.5       # 50cm inflation (vs 30-40cm for wheeled)
+
+global_costmap:
+  ros__parameters:
+    update_frequency: 1.0
+    publish_frequency: 1.0
+    rolling_window: false   # Static map
+    robot_radius: 0.2
+    resolution: 0.05
+    track_unknown_space: true
+
+    plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+
+    obstacle_layer:
+      plugin: "nav2_costmap_2d::ObstacleLayer"
+      enabled: True
+      observation_sources: camera
+      camera:
+        topic: /camera/depth/points
+        max_obstacle_height: 2.0
+        clearing: True
+        marking: True
+
+    inflation_layer:
+      plugin: "nav2_costmap_2d::InflationLayer"
+      cost_scaling_factor: 5.0
+      inflation_radius: 0.5
+
+planner_server:
+  ros__parameters:
+    planner_plugin_types: ["nav2_navfn_planner/NavfnPlanner"]
+    NavfnPlanner:
+      tolerance: 0.1       # Goal tolerance (10cm - tighter for precision)
+      use_astar: true      # A* vs Dijkstra (A* faster for humanoid's slower execution)
