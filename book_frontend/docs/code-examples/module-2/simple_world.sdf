@@ -1,0 +1,470 @@
+<?xml version="1.0" ?>
+<!--
+  Simple Gazebo World - Module 2 Example
+
+  This SDF file demonstrates a complete Gazebo world configuration
+  suitable for humanoid robot testing. It includes:
+  - Physics engine configuration (DART with 1kHz timestep)
+  - Lighting setup (directional sun + ambient)
+  - Ground plane with realistic friction
+  - Basic obstacles for navigation testing
+
+  Launch with: gz sim simple_world.sdf
+-->
+<sdf version="1.9">
+  <world name="robot_arena">
+
+    <!-- ============================================================
+         PHYSICS CONFIGURATION
+
+         The <physics> element controls the simulation engine behavior.
+         DART is the default engine for Gazebo Harmonic, offering
+         excellent constraint stability for articulated robots.
+         ============================================================ -->
+    <physics name="default_physics" type="dart">
+      <!--
+        max_step_size: Physics timestep in seconds
+        - Smaller = more accurate but slower
+        - 0.001 (1ms) is standard for robotics (1kHz control loop)
+        - 0.005 (5ms) for faster training (less accurate)
+      -->
+      <max_step_size>0.001</max_step_size>
+
+      <!--
+        real_time_factor: Target simulation speed relative to wall-clock
+        - 1.0 = real-time (1 sim-second per real-second)
+        - 2.0 = 2× faster than real-time
+        - 0.0 = run as fast as possible (for training)
+      -->
+      <real_time_factor>1.0</real_time_factor>
+
+      <!--
+        real_time_update_rate: Maximum physics updates per second
+        - 0 = unlimited (match real_time_factor as closely as possible)
+        - 1000 = cap at 1000 Hz to prevent CPU overload
+      -->
+      <real_time_update_rate>1000</real_time_update_rate>
+
+      <!--
+        DART-specific solver configuration
+        Adjusts constraint solving for joint limits and contacts
+      -->
+      <dart>
+        <solver>
+          <!--
+            solver_type options:
+            - dantzig: Fast, good for most cases (default)
+            - pgs: Projected Gauss-Seidel, more stable for high friction
+          -->
+          <solver_type>dantzig</solver_type>
+        </solver>
+        <!--
+          collision_detector options:
+          - bullet: Fast broad-phase, good for complex scenes
+          - fcl: Flexible Collision Library, more accurate
+          - ode: Legacy, for compatibility
+        -->
+        <collision_detector>bullet</collision_detector>
+      </dart>
+    </physics>
+
+    <!-- ============================================================
+         GRAVITY CONFIGURATION
+
+         Gravity vector in world frame (X, Y, Z)
+         Standard Earth gravity: (0, 0, -9.81) m/s²
+         - Negative Z because Z is "up" in ROS convention
+         - Modify for lunar (1.62) or Martian (3.72) simulations
+         ============================================================ -->
+    <gravity>0 0 -9.81</gravity>
+
+    <!-- ============================================================
+         MAGNETIC FIELD (for IMU sensors)
+
+         Earth's magnetic field vector in world frame (microtesla)
+         Used by magnetometer sensors for compass heading
+         Values vary by location; this is approximate for mid-latitudes
+         ============================================================ -->
+    <magnetic_field>5.5645e-6 22.8758e-6 -42.3884e-6</magnetic_field>
+
+    <!-- ============================================================
+         ATMOSPHERE MODEL
+
+         Affects aerodynamic forces on large surfaces
+         Most ground robots can ignore this (negligible effect)
+         ============================================================ -->
+    <atmosphere type="adiabatic"/>
+
+    <!-- ============================================================
+         SCENE CONFIGURATION
+
+         Visual rendering settings (don't affect physics)
+         ============================================================ -->
+    <scene>
+      <!-- Ambient light color (fills shadows) -->
+      <ambient>0.4 0.4 0.4 1</ambient>
+      <!-- Background color (sky) -->
+      <background>0.7 0.85 1.0 1</background>
+      <!-- Enable shadows from directional lights -->
+      <shadows>true</shadows>
+    </scene>
+
+    <!-- ============================================================
+         LIGHTING
+
+         Light sources for rendering. Physics simulation continues
+         even without lights, but camera sensors need illumination.
+         ============================================================ -->
+
+    <!-- Primary directional light (simulates sun) -->
+    <light name="sun" type="directional">
+      <!-- Light direction vector (pointing from sky toward ground) -->
+      <direction>-0.5 0.5 -0.9</direction>
+      <!-- Cast shadows from this light source -->
+      <cast_shadows>true</cast_shadows>
+      <!-- Light color and intensity (diffuse = direct light) -->
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <!-- Specular highlights (shininess on surfaces) -->
+      <specular>0.2 0.2 0.2 1</specular>
+      <!-- Attenuation (how light fades with distance) -->
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+    </light>
+
+    <!-- ============================================================
+         GROUND PLANE MODEL
+
+         The ground is a model with a single link containing:
+         - Visual geometry (what you see)
+         - Collision geometry (what physics interacts with)
+         - Surface properties (friction coefficients)
+         ============================================================ -->
+    <model name="ground_plane">
+      <!-- Static models don't move under forces (infinite mass) -->
+      <static>true</static>
+
+      <link name="ground_link">
+        <!-- Collision geometry: What physics engine uses for contacts -->
+        <collision name="ground_collision">
+          <geometry>
+            <!-- Infinite plane defined by normal vector (Z-up) -->
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+
+          <!--
+            Surface properties: Critical for realistic robot interaction
+            These values significantly affect walking, grasping, and pushing
+          -->
+          <surface>
+            <friction>
+              <ode>
+                <!--
+                  mu: Primary friction coefficient (Coulomb model)
+                  - 0.0 = ice (frictionless)
+                  - 0.5 = smooth concrete
+                  - 0.8 = rubber on concrete (typical robot foot)
+                  - 1.0+ = high-grip surfaces
+                -->
+                <mu>0.8</mu>
+                <!-- mu2: Secondary friction (perpendicular direction) -->
+                <mu2>0.8</mu2>
+                <!-- fdir1: Friction direction (usually leave default) -->
+                <fdir1>0 0 0</fdir1>
+              </ode>
+              <torsional>
+                <!-- Coefficient for rotational friction (prevents spinning) -->
+                <coefficient>0.5</coefficient>
+                <surface_radius>0.05</surface_radius>
+              </torsional>
+            </friction>
+            <contact>
+              <ode>
+                <!-- kp: Contact stiffness (higher = harder surface) -->
+                <kp>1e6</kp>
+                <!-- kd: Contact damping (prevents bouncing) -->
+                <kd>100</kd>
+                <!-- max_vel: Maximum corrective velocity for penetration -->
+                <max_vel>100</max_vel>
+                <!-- min_depth: Penetration depth before contact activates -->
+                <min_depth>0.001</min_depth>
+              </ode>
+            </contact>
+          </surface>
+        </collision>
+
+        <!-- Visual geometry: What rendering shows (can differ from collision) -->
+        <visual name="ground_visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <material>
+            <!-- Gray concrete-like appearance -->
+            <ambient>0.3 0.3 0.3 1</ambient>
+            <diffuse>0.7 0.7 0.7 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ============================================================
+         OBSTACLE: BOX
+
+         A simple box obstacle for navigation testing.
+         Static objects are computationally cheap (no dynamics).
+         ============================================================ -->
+    <model name="obstacle_box">
+      <static>true</static>
+      <!-- Position in world frame: X=2m forward, Y=0, Z=0.25m (half-height) -->
+      <pose>2 0 0.25 0 0 0</pose>
+
+      <link name="box_link">
+        <collision name="box_collision">
+          <geometry>
+            <box>
+              <!-- Dimensions: 0.5m × 0.5m × 0.5m cube -->
+              <size>0.5 0.5 0.5</size>
+            </box>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>0.6</mu>
+                <mu2>0.6</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+
+        <visual name="box_visual">
+          <geometry>
+            <box>
+              <size>0.5 0.5 0.5</size>
+            </box>
+          </geometry>
+          <material>
+            <!-- Orange color for visibility -->
+            <ambient>0.8 0.4 0.1 1</ambient>
+            <diffuse>1.0 0.5 0.0 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ============================================================
+         OBSTACLE: CYLINDER
+
+         Cylindrical obstacle for testing curved collision detection.
+         ============================================================ -->
+    <model name="obstacle_cylinder">
+      <static>true</static>
+      <pose>3 1.5 0.4 0 0 0</pose>
+
+      <link name="cylinder_link">
+        <collision name="cylinder_collision">
+          <geometry>
+            <cylinder>
+              <radius>0.3</radius>
+              <length>0.8</length>
+            </cylinder>
+          </geometry>
+        </collision>
+
+        <visual name="cylinder_visual">
+          <geometry>
+            <cylinder>
+              <radius>0.3</radius>
+              <length>0.8</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <!-- Blue color -->
+            <ambient>0.1 0.2 0.6 1</ambient>
+            <diffuse>0.2 0.4 0.8 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ============================================================
+         RAMP (INCLINED PLANE)
+
+         For testing slope traversal and stability on inclines.
+         The pose rotates a box to create a 15° incline.
+         ============================================================ -->
+    <model name="ramp">
+      <static>true</static>
+      <!--
+        Pose: X Y Z Roll Pitch Yaw
+        Pitch of 0.26 radians ≈ 15 degrees
+        Position calculated to place ramp bottom at Z=0
+      -->
+      <pose>5 -1 0.13 0 -0.26 0</pose>
+
+      <link name="ramp_link">
+        <collision name="ramp_collision">
+          <geometry>
+            <box>
+              <!-- Thin, wide ramp: 2m long, 1m wide, 0.05m thick -->
+              <size>2.0 1.0 0.05</size>
+            </box>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <!-- Higher friction for ramp traversal -->
+                <mu>0.9</mu>
+                <mu2>0.9</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+
+        <visual name="ramp_visual">
+          <geometry>
+            <box>
+              <size>2.0 1.0 0.05</size>
+            </box>
+          </geometry>
+          <material>
+            <!-- Green color -->
+            <ambient>0.2 0.5 0.2 1</ambient>
+            <diffuse>0.3 0.7 0.3 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ============================================================
+         DYNAMIC OBJECT: PUSHABLE BOX
+
+         Unlike static obstacles, this box has mass and can be pushed.
+         Useful for testing manipulation and collision response.
+         ============================================================ -->
+    <model name="pushable_box">
+      <!-- Not static: can move under forces -->
+      <pose>1 2 0.15 0 0 0</pose>
+
+      <link name="pushable_link">
+        <!-- Inertial properties: Required for dynamic objects -->
+        <inertial>
+          <!-- Mass in kg -->
+          <mass>5.0</mass>
+          <!--
+            Inertia tensor for a uniform box:
+            I = (1/12) × m × (h² + d²) for each axis
+            For 0.3m cube with 5kg mass: ~0.0375 kg·m²
+          -->
+          <inertia>
+            <ixx>0.0375</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.0375</iyy>
+            <iyz>0</iyz>
+            <izz>0.0375</izz>
+          </inertia>
+        </inertial>
+
+        <collision name="pushable_collision">
+          <geometry>
+            <box>
+              <size>0.3 0.3 0.3</size>
+            </box>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>0.5</mu>
+                <mu2>0.5</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+
+        <visual name="pushable_visual">
+          <geometry>
+            <box>
+              <size>0.3 0.3 0.3</size>
+            </box>
+          </geometry>
+          <material>
+            <!-- Red color to indicate dynamic object -->
+            <ambient>0.6 0.1 0.1 1</ambient>
+            <diffuse>0.9 0.2 0.2 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ============================================================
+         ROBOT SPAWN POINT MARKER (optional)
+
+         Visual-only marker showing where to spawn robots.
+         No collision, purely for reference.
+         ============================================================ -->
+    <model name="spawn_marker">
+      <static>true</static>
+      <pose>0 0 0.001 0 0 0</pose>
+
+      <link name="marker_link">
+        <!-- No collision: robots can spawn here without interference -->
+        <visual name="marker_visual">
+          <geometry>
+            <cylinder>
+              <radius>0.5</radius>
+              <length>0.002</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <!-- Semi-transparent yellow circle -->
+            <ambient>0.8 0.8 0.0 0.5</ambient>
+            <diffuse>1.0 1.0 0.0 0.5</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ============================================================
+         PLUGINS (System-level functionality)
+
+         Plugins extend Gazebo with custom behavior.
+         These are "world plugins" that operate at the simulation level.
+         ============================================================ -->
+
+    <!-- Physics system: Required for physics simulation -->
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics">
+    </plugin>
+
+    <!-- User commands: Allows spawning/deleting models at runtime -->
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands">
+    </plugin>
+
+    <!-- Scene broadcaster: Publishes scene state for visualization -->
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster">
+    </plugin>
+
+    <!-- Sensors: Required for any sensor plugins (LiDAR, camera, IMU) -->
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <!-- IMU: Required for IMU sensor functionality -->
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu">
+    </plugin>
+
+    <!-- Contact: Required for contact force sensing -->
+    <plugin filename="gz-sim-contact-system" name="gz::sim::systems::Contact">
+    </plugin>
+
+  </world>
+</sdf>

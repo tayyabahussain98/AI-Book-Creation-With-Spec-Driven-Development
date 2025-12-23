@@ -1,0 +1,431 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Unity ROS-TCP-Connector Bridge Configuration - Module 2 Example
+
+  This configuration file demonstrates how to set up the ROS-TCP-Connector
+  for bidirectional communication between Unity and ROS 2.
+
+  PURPOSE:
+  - Enable joint state synchronization between Unity robot and ROS 2 controllers
+  - Allow sensor data publication from Unity (cameras, contact sensors)
+  - Receive velocity commands from ROS 2 navigation stack
+
+  PREREQUISITES:
+  - Unity 2022.3 LTS or later
+  - Unity Robotics Hub package installed
+  - ROS-TCP-Connector package imported
+  - ROS 2 with ros_tcp_endpoint running
+
+  USAGE:
+  1. Import this configuration into your Unity project
+  2. Attach ROSConnection component to a GameObject
+  3. Configure endpoint IP and port
+  4. Start ros_tcp_endpoint on ROS 2 side:
+     ros2 run ros_tcp_endpoint default_server_endpoint [ros-args -p ROS_IP:=0.0.0.0]
+
+  NOTE: This is a conceptual configuration file. Unity's ROS-TCP-Connector
+  uses C# scripts and Unity Editor UI for configuration. This XML documents
+  the configuration parameters for educational purposes.
+-->
+
+<ROSBridgeConfiguration version="1.0">
+  <!--
+    ============================================================
+    CONNECTION SETTINGS
+
+    The ROS-TCP-Connector uses TCP sockets for communication.
+    Default port is 10000, but can be changed if needed.
+    ============================================================
+  -->
+  <Connection>
+    <!-- ROS 2 machine IP address (use localhost for same machine) -->
+    <ROSIPAddress>127.0.0.1</ROSIPAddress>
+
+    <!-- TCP port for ros_tcp_endpoint (default: 10000) -->
+    <ROSPort>10000</ROSPort>
+
+    <!--
+      Connection timeout in seconds.
+      Increase for high-latency networks.
+    -->
+    <ConnectionTimeout>10.0</ConnectionTimeout>
+
+    <!--
+      Keep-alive interval in seconds.
+      Helps detect disconnections on unreliable networks.
+    -->
+    <KeepAliveInterval>1.0</KeepAliveInterval>
+
+    <!--
+      Show HUD with connection status in Unity.
+      Useful during development, disable for production.
+    -->
+    <ShowHUD>true</ShowHUD>
+  </Connection>
+
+  <!--
+    ============================================================
+    PUBLISHED TOPICS (Unity → ROS 2)
+
+    Topics that Unity publishes for ROS 2 to subscribe to.
+    Common uses: joint states, sensor data, transforms.
+    ============================================================
+  -->
+  <Publishers>
+    <!--
+      JOINT STATE PUBLISHER
+      =====================
+      Publishes current joint positions from Unity's ArticulationBody
+      components to ROS 2 for state monitoring and feedback control.
+    -->
+    <Publisher name="joint_state_publisher">
+      <Topic>/joint_states</Topic>
+      <MessageType>sensor_msgs/msg/JointState</MessageType>
+      <PublishRate>50</PublishRate>  <!-- 50 Hz update rate -->
+      <QueueSize>1</QueueSize>
+      <Description>
+        Robot joint positions, velocities, and efforts from Unity physics.
+        Maps ArticulationBody.jointPosition to JointState.position.
+      </Description>
+    </Publisher>
+
+    <!--
+      CAMERA IMAGE PUBLISHER
+      ======================
+      Publishes RGB camera images from Unity's Camera component.
+      Useful for training vision models with photorealistic rendering.
+    -->
+    <Publisher name="camera_publisher">
+      <Topic>/unity_camera/image_raw</Topic>
+      <MessageType>sensor_msgs/msg/Image</MessageType>
+      <PublishRate>30</PublishRate>  <!-- 30 Hz for video -->
+      <QueueSize>1</QueueSize>
+      <Resolution width="640" height="480"/>
+      <Encoding>rgb8</Encoding>
+      <Description>
+        High-fidelity RGB images rendered by Unity's HDRP/URP pipeline.
+        Ideal for training perception models that need photorealistic data.
+      </Description>
+    </Publisher>
+
+    <!--
+      TRANSFORM PUBLISHER
+      ===================
+      Publishes TF2 transforms for robot links.
+      Enables RViz visualization alongside Unity rendering.
+    -->
+    <Publisher name="tf_publisher">
+      <Topic>/tf</Topic>
+      <MessageType>tf2_msgs/msg/TFMessage</MessageType>
+      <PublishRate>50</PublishRate>
+      <QueueSize>10</QueueSize>
+      <Description>
+        Transform tree for all robot links.
+        Allows ROS 2 tools to track robot pose in Unity world frame.
+      </Description>
+    </Publisher>
+
+    <!--
+      CONTACT SENSOR PUBLISHER
+      ========================
+      Publishes collision/contact events from Unity physics.
+      Critical for manipulation and locomotion tasks.
+    -->
+    <Publisher name="contact_publisher">
+      <Topic>/foot_contacts</Topic>
+      <MessageType>std_msgs/msg/Bool</MessageType>
+      <PublishRate>100</PublishRate>  <!-- High rate for control -->
+      <QueueSize>1</QueueSize>
+      <Description>
+        Binary contact state for humanoid foot sensors.
+        Essential for gait phase detection in walking control.
+      </Description>
+    </Publisher>
+  </Publishers>
+
+  <!--
+    ============================================================
+    SUBSCRIBED TOPICS (ROS 2 → Unity)
+
+    Topics that Unity subscribes to for receiving commands from ROS 2.
+    Common uses: joint commands, velocity commands, actions.
+    ============================================================
+  -->
+  <Subscribers>
+    <!--
+      JOINT COMMAND SUBSCRIBER
+      ========================
+      Receives joint position/velocity/effort commands from ROS 2
+      controllers and applies them to Unity ArticulationBody components.
+    -->
+    <Subscriber name="joint_command_subscriber">
+      <Topic>/joint_commands</Topic>
+      <MessageType>sensor_msgs/msg/JointState</MessageType>
+      <QueueSize>1</QueueSize>
+      <Description>
+        Joint position targets from ROS 2 controllers.
+        Unity applies these to ArticulationBody.SetDriveTarget().
+        Supports position, velocity, and effort control modes.
+      </Description>
+    </Subscriber>
+
+    <!--
+      VELOCITY COMMAND SUBSCRIBER
+      ===========================
+      Receives Twist messages for mobile base control.
+      Applies linear/angular velocities to robot base.
+    -->
+    <Subscriber name="cmd_vel_subscriber">
+      <Topic>/cmd_vel</Topic>
+      <MessageType>geometry_msgs/msg/Twist</MessageType>
+      <QueueSize>1</QueueSize>
+      <Description>
+        Velocity commands from navigation stack.
+        Unity interprets linear.x, linear.y, angular.z for base motion.
+        Works with diff-drive, omnidirectional, and holonomic bases.
+      </Description>
+    </Subscriber>
+
+    <!--
+      TRAJECTORY SUBSCRIBER
+      =====================
+      Receives full joint trajectories for smooth motion execution.
+      Interpolates between waypoints for fluid movement.
+    -->
+    <Subscriber name="trajectory_subscriber">
+      <Topic>/joint_trajectory</Topic>
+      <MessageType>trajectory_msgs/msg/JointTrajectory</MessageType>
+      <QueueSize>5</QueueSize>
+      <Description>
+        Multi-waypoint trajectories from motion planners.
+        Unity interpolates between points for smooth execution.
+        Respects time_from_start timing constraints.
+      </Description>
+    </Subscriber>
+
+    <!--
+      GRIPPER COMMAND SUBSCRIBER
+      ==========================
+      Receives gripper open/close commands for manipulation.
+    -->
+    <Subscriber name="gripper_subscriber">
+      <Topic>/gripper_command</Topic>
+      <MessageType>std_msgs/msg/Float64</MessageType>
+      <QueueSize>1</QueueSize>
+      <Description>
+        Gripper position command (0.0 = closed, 1.0 = open).
+        Maps to ArticulationBody drive on gripper joints.
+      </Description>
+    </Subscriber>
+  </Subscribers>
+
+  <!--
+    ============================================================
+    SERVICE CLIENTS (Unity calls ROS 2 services)
+
+    Services that Unity can call on the ROS 2 side.
+    Useful for triggering behaviors and querying state.
+    ============================================================
+  -->
+  <ServiceClients>
+    <!--
+      SPAWN SERVICE
+      =============
+      Request ROS 2 to spawn objects in the shared world.
+    -->
+    <ServiceClient name="spawn_object">
+      <Service>/spawn_object</Service>
+      <ServiceType>gazebo_msgs/srv/SpawnEntity</ServiceType>
+      <Description>
+        Spawn objects in ROS 2/Gazebo that Unity can also visualize.
+        Enables synchronized multi-simulator environments.
+      </Description>
+    </ServiceClient>
+  </ServiceClients>
+
+  <!--
+    ============================================================
+    SERVICE SERVERS (ROS 2 calls Unity services)
+
+    Services that Unity provides for ROS 2 to call.
+    Useful for rendering requests and scene manipulation.
+    ============================================================
+  -->
+  <ServiceServers>
+    <!--
+      RENDER SERVICE
+      ==============
+      ROS 2 can request Unity to render specific camera views.
+    -->
+    <ServiceServer name="render_camera">
+      <Service>/unity/render_camera</Service>
+      <ServiceType>sensor_msgs/srv/SetCameraInfo</ServiceType>
+      <Description>
+        On-demand camera rendering for specific viewpoints.
+        Useful for generating training data at arbitrary poses.
+      </Description>
+    </ServiceServer>
+
+    <!--
+      RESET SERVICE
+      =============
+      ROS 2 can request Unity to reset the simulation.
+    -->
+    <ServiceServer name="reset_simulation">
+      <Service>/unity/reset</Service>
+      <ServiceType>std_srvs/srv/Trigger</ServiceType>
+      <Description>
+        Reset Unity scene to initial state.
+        Critical for episodic reinforcement learning training.
+      </Description>
+    </ServiceServer>
+  </ServiceServers>
+
+  <!--
+    ============================================================
+    MESSAGE SERIALIZATION
+
+    Configuration for message serialization between Unity and ROS 2.
+    ============================================================
+  -->
+  <Serialization>
+    <!--
+      Use little-endian byte order (standard for x86/x64).
+      Must match ros_tcp_endpoint configuration.
+    -->
+    <ByteOrder>LittleEndian</ByteOrder>
+
+    <!--
+      Maximum message size in bytes.
+      Increase for large images or point clouds.
+    -->
+    <MaxMessageSize>10485760</MaxMessageSize>  <!-- 10 MB -->
+
+    <!--
+      Enable message compression for bandwidth savings.
+      Adds latency but reduces network load.
+    -->
+    <Compression enabled="false">
+      <Algorithm>LZ4</Algorithm>
+      <Level>1</Level>
+    </Compression>
+  </Serialization>
+
+  <!--
+    ============================================================
+    PERFORMANCE TUNING
+
+    Settings to optimize performance for different use cases.
+    ============================================================
+  -->
+  <Performance>
+    <!--
+      Thread configuration for message processing.
+      More threads improve throughput but increase CPU usage.
+    -->
+    <PublisherThreads>2</PublisherThreads>
+    <SubscriberThreads>2</SubscriberThreads>
+
+    <!--
+      Buffer sizes for network communication.
+      Larger buffers handle bursts better but use more memory.
+    -->
+    <SendBufferSize>1048576</SendBufferSize>   <!-- 1 MB -->
+    <ReceiveBufferSize>1048576</ReceiveBufferSize>
+
+    <!--
+      Message batching for high-frequency topics.
+      Reduces overhead at the cost of latency.
+    -->
+    <BatchingEnabled>false</BatchingEnabled>
+    <BatchInterval>0.01</BatchInterval>  <!-- 10ms batches -->
+  </Performance>
+
+  <!--
+    ============================================================
+    LOGGING AND DEBUGGING
+
+    Settings for troubleshooting communication issues.
+    ============================================================
+  -->
+  <Logging>
+    <!-- Log level: Debug, Info, Warning, Error -->
+    <Level>Info</Level>
+
+    <!-- Log to Unity console -->
+    <LogToConsole>true</LogToConsole>
+
+    <!-- Log to file for post-analysis -->
+    <LogToFile enabled="false">
+      <FilePath>ros_bridge_log.txt</FilePath>
+      <MaxSize>10485760</MaxSize>  <!-- 10 MB before rotation -->
+    </LogToFile>
+
+    <!-- Log message statistics (useful for debugging) -->
+    <LogStatistics enabled="true">
+      <Interval>10.0</Interval>  <!-- Every 10 seconds -->
+    </LogStatistics>
+  </Logging>
+</ROSBridgeConfiguration>
+
+<!--
+  ============================================================
+  C# SCRIPT EXAMPLE FOR UNITY
+
+  The actual Unity implementation uses C# scripts.
+  Here's how the above configuration translates to code:
+  ============================================================
+
+  using Unity.Robotics.ROSTCPConnector;
+  using RosMessageTypes.Sensor;
+  using RosMessageTypes.Geometry;
+
+  public class RobotBridgeController : MonoBehaviour
+  {
+      private ROSConnection ros;
+
+      void Start()
+      {
+          // Get the ROSConnection singleton
+          ros = ROSConnection.GetOrCreateInstance();
+
+          // Configure connection (matches XML above)
+          ros.RosIPAddress = "127.0.0.1";
+          ros.RosPort = 10000;
+
+          // Register publishers
+          ros.RegisterPublisher<JointStateMsg>("/joint_states");
+          ros.RegisterPublisher<ImageMsg>("/unity_camera/image_raw");
+
+          // Register subscribers
+          ros.Subscribe<JointStateMsg>("/joint_commands", JointCommandCallback);
+          ros.Subscribe<TwistMsg>("/cmd_vel", VelocityCallback);
+      }
+
+      void JointCommandCallback(JointStateMsg msg)
+      {
+          // Apply joint positions to ArticulationBody components
+          for (int i = 0; i < msg.position.Length; i++)
+          {
+              // Find ArticulationBody by joint name
+              // Set drive target to commanded position
+          }
+      }
+
+      void VelocityCallback(TwistMsg msg)
+      {
+          // Apply velocity to robot base
+          float linear = (float)msg.linear.x;
+          float angular = (float)msg.angular.z;
+          // Update robot movement
+      }
+
+      void FixedUpdate()
+      {
+          // Publish joint states at physics update rate
+          var jointState = new JointStateMsg();
+          // Fill with current joint positions from ArticulationBody
+          ros.Publish("/joint_states", jointState);
+      }
+  }
+-->

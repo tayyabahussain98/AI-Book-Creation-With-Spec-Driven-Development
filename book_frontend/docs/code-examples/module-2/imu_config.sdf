@@ -1,0 +1,292 @@
+<?xml version="1.0" ?>
+<!--
+  IMU Sensor Configuration - Module 2 Sensor Example
+
+  This SDF snippet demonstrates IMU (Inertial Measurement Unit) configuration:
+  - Accelerometer: Measures linear acceleration (m/s²)
+  - Gyroscope: Measures angular velocity (rad/s)
+  - Orientation: Computed from sensor fusion (quaternion)
+  - Realistic noise models for each component
+
+  Topics published:
+  - /imu (sensor_msgs/Imu) - Combined IMU data
+
+  To use: Include this sensor in a link of your robot model.
+
+  Bridge command:
+  ros2 run ros_gz_bridge parameter_bridge /imu@sensor_msgs/msg/Imu@gz.msgs.IMU
+-->
+<sdf version="1.9">
+  <!--
+    This is a SNIPPET showing IMU sensor configuration.
+    Include this <sensor> element inside a <link> of your robot.
+
+    Example:
+    <link name="imu_link">
+      <inertial>...</inertial>
+      <visual>...</visual>
+
+      [INSERT IMU SENSOR HERE]
+
+    </link>
+  -->
+
+  <!--
+    ============================================================
+    IMU SENSOR CONFIGURATION
+
+    The IMU measures motion of the link it's attached to.
+    Typically mounted on the robot's base or torso.
+    ============================================================
+  -->
+  <sensor name="imu_sensor" type="imu">
+    <!--
+      Basic sensor settings
+    -->
+    <always_on>true</always_on>
+    <update_rate>100</update_rate>  <!-- 100 Hz typical for IMU -->
+    <visualize>false</visualize>
+    <topic>imu</topic>
+
+    <imu>
+      <!--
+        ============================================================
+        ORIENTATION REFERENCE FRAME
+
+        Defines how orientation is computed and reported.
+
+        localization: Reference frame for orientation
+        - CUSTOM: Use specified reference directions
+        - ENU: East-North-Up (ROS convention)
+        - NED: North-East-Down (aviation convention)
+
+        grav_dir_x/y/z: Gravity direction in reference frame
+        - (0, 0, -1) means gravity points in -Z direction
+        ============================================================
+      -->
+      <orientation_reference_frame>
+        <localization>CUSTOM</localization>
+        <custom_rpy>0 0 0</custom_rpy>
+        <grav_dir_x>0</grav_dir_x>
+        <grav_dir_y>0</grav_dir_y>
+        <grav_dir_z>-1</grav_dir_z>
+      </orientation_reference_frame>
+
+      <!--
+        ============================================================
+        LINEAR ACCELERATION (Accelerometer)
+
+        Measures acceleration in m/s² along X, Y, Z axes.
+        Includes gravity when robot is stationary:
+        - Stationary on flat ground: (0, 0, 9.81)
+
+        Noise characteristics for MEMS accelerometers:
+        - Mean: Bias (systematic offset)
+        - Stddev: Random walk (noise variance)
+
+        Typical values (from sensor datasheets):
+        - Consumer IMU (MPU-6050): noise ~0.05-0.1 m/s²
+        - Industrial IMU (VN-100): noise ~0.01-0.02 m/s²
+        - Navigation grade: noise ~0.001-0.005 m/s²
+        ============================================================
+      -->
+      <linear_acceleration>
+        <x>
+          <noise type="gaussian">
+            <mean>0.0</mean>
+            <stddev>0.05</stddev>  <!-- m/s² -->
+            <!--
+              bias_mean: Constant offset (sensor calibration error)
+              bias_stddev: Drift in bias over time (Allan variance)
+            -->
+            <bias_mean>0.0001</bias_mean>
+            <bias_stddev>0.0001</bias_stddev>
+          </noise>
+        </x>
+        <y>
+          <noise type="gaussian">
+            <mean>0.0</mean>
+            <stddev>0.05</stddev>
+            <bias_mean>0.0001</bias_mean>
+            <bias_stddev>0.0001</bias_stddev>
+          </noise>
+        </y>
+        <z>
+          <noise type="gaussian">
+            <mean>0.0</mean>
+            <stddev>0.05</stddev>
+            <bias_mean>0.0001</bias_mean>
+            <bias_stddev>0.0001</bias_stddev>
+          </noise>
+        </z>
+      </linear_acceleration>
+
+      <!--
+        ============================================================
+        ANGULAR VELOCITY (Gyroscope)
+
+        Measures rotation rate in rad/s around X, Y, Z axes.
+        Stationary robot should read (0, 0, 0).
+
+        Gyroscope characteristics:
+        - More prone to drift than accelerometer
+        - Bias drifts with temperature
+        - Key error source for orientation estimation
+
+        Typical values:
+        - Consumer IMU (MPU-6050): noise ~0.005-0.01 rad/s
+        - Industrial IMU (VN-100): noise ~0.001-0.003 rad/s
+        - Navigation grade: noise ~0.0001-0.0005 rad/s
+        ============================================================
+      -->
+      <angular_velocity>
+        <x>
+          <noise type="gaussian">
+            <mean>0.0</mean>
+            <stddev>0.01</stddev>  <!-- rad/s -->
+            <!--
+              Gyro bias drift is the dominant error in IMU integration.
+              After 60 seconds, bias drift accumulates to significant
+              orientation error without correction.
+            -->
+            <bias_mean>0.0001</bias_mean>
+            <bias_stddev>0.0001</bias_stddev>
+          </noise>
+        </x>
+        <y>
+          <noise type="gaussian">
+            <mean>0.0</mean>
+            <stddev>0.01</stddev>
+            <bias_mean>0.0001</bias_mean>
+            <bias_stddev>0.0001</bias_stddev>
+          </noise>
+        </y>
+        <z>
+          <noise type="gaussian">
+            <mean>0.0</mean>
+            <stddev>0.01</stddev>
+            <bias_mean>0.0001</bias_mean>
+            <bias_stddev>0.0001</bias_stddev>
+          </noise>
+        </z>
+      </angular_velocity>
+
+      <!--
+        ============================================================
+        ENABLE ORIENTATION OUTPUT
+
+        When true, Gazebo computes orientation from accel/gyro fusion.
+        Orientation is published as quaternion (x, y, z, w).
+
+        Note: Gazebo uses ideal sensor fusion. Real IMUs use
+        complementary or Kalman filters with varying accuracy.
+        ============================================================
+      -->
+      <enable_orientation>true</enable_orientation>
+    </imu>
+  </sensor>
+
+  <!--
+    ============================================================
+    USAGE EXAMPLE: Complete Robot Link with IMU
+
+    Copy this structure into your robot model.
+    ============================================================
+  -->
+  <model name="imu_example_robot">
+    <link name="base_with_imu">
+      <pose>0 0 0.1 0 0 0</pose>
+
+      <inertial>
+        <mass>5.0</mass>
+        <inertia>
+          <ixx>0.05</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.05</iyy>
+          <iyz>0</iyz>
+          <izz>0.05</izz>
+        </inertia>
+      </inertial>
+
+      <visual name="base_visual">
+        <geometry>
+          <box><size>0.3 0.3 0.1</size></box>
+        </geometry>
+        <material>
+          <diffuse>0.5 0.5 0.5 1</diffuse>
+        </material>
+      </visual>
+
+      <collision name="base_collision">
+        <geometry>
+          <box><size>0.3 0.3 0.1</size></box>
+        </geometry>
+      </collision>
+
+      <!--
+        IMU SENSOR ATTACHED TO THIS LINK
+        ================================
+        The IMU measures motion of this link (base_with_imu).
+        Mount IMU at known position relative to robot frame.
+      -->
+      <sensor name="imu_sensor" type="imu">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <topic>imu</topic>
+
+        <imu>
+          <orientation_reference_frame>
+            <localization>CUSTOM</localization>
+            <grav_dir_x>0</grav_dir_x>
+            <grav_dir_y>0</grav_dir_y>
+            <grav_dir_z>-1</grav_dir_z>
+          </orientation_reference_frame>
+
+          <linear_acceleration>
+            <x><noise type="gaussian"><mean>0</mean><stddev>0.05</stddev></noise></x>
+            <y><noise type="gaussian"><mean>0</mean><stddev>0.05</stddev></noise></y>
+            <z><noise type="gaussian"><mean>0</mean><stddev>0.05</stddev></noise></z>
+          </linear_acceleration>
+
+          <angular_velocity>
+            <x><noise type="gaussian"><mean>0</mean><stddev>0.01</stddev></noise></x>
+            <y><noise type="gaussian"><mean>0</mean><stddev>0.01</stddev></noise></y>
+            <z><noise type="gaussian"><mean>0</mean><stddev>0.01</stddev></noise></z>
+          </angular_velocity>
+
+          <enable_orientation>true</enable_orientation>
+        </imu>
+      </sensor>
+    </link>
+  </model>
+
+  <!--
+    ============================================================
+    IMU NOISE PARAMETER REFERENCE
+
+    Use these values based on your simulation fidelity requirements:
+
+    LOW NOISE (ideal testing):
+    - accel_stddev: 0.01 m/s²
+    - gyro_stddev: 0.001 rad/s
+    - bias_stddev: 0.00001
+
+    MEDIUM NOISE (typical consumer IMU):
+    - accel_stddev: 0.05 m/s²
+    - gyro_stddev: 0.01 rad/s
+    - bias_stddev: 0.0001
+
+    HIGH NOISE (challenging conditions):
+    - accel_stddev: 0.2 m/s²
+    - gyro_stddev: 0.05 rad/s
+    - bias_stddev: 0.001
+
+    DOMAIN RANDOMIZATION (ML training):
+    Randomly sample from ranges:
+    - accel_stddev: [0.01, 0.2] m/s²
+    - gyro_stddev: [0.001, 0.05] rad/s
+    - bias_stddev: [0.00001, 0.001]
+    ============================================================
+  -->
+</sdf>

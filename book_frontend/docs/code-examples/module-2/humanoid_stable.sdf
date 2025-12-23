@@ -1,0 +1,605 @@
+<?xml version="1.0" ?>
+<!--
+  Stable Humanoid Robot Model - Module 2 Example
+
+  This SDF file demonstrates a balanced bipedal humanoid robot suitable
+  for Gazebo simulation. Key features for stability:
+  - Center of Mass (CoM) carefully placed in torso
+  - Wide foot contact surfaces for support polygon
+  - Joint limits and damping tuned for realistic dynamics
+  - Collision geometry simplified for performance
+
+  Note: This is a simplified teaching model, not a production robot.
+
+  Launch: Include in world file or spawn with:
+  gz service -s /world/robot_arena/create [reqtype gz.msgs.EntityFactory]
+    [reptype gz.msgs.Boolean] [timeout 1000]
+    [req 'sdf_filename: "humanoid_stable.sdf"']
+-->
+<sdf version="1.9">
+  <model name="humanoid_stable">
+    <!--
+      ============================================================
+      MODEL CONFIGURATION
+
+      static: false means this robot obeys physics
+      self_collide: false prevents self-collision (performance)
+      ============================================================
+    -->
+    <static>false</static>
+    <self_collide>false</self_collide>
+
+    <!--
+      Initial pose in world frame: X Y Z Roll Pitch Yaw
+      Start slightly above ground to let physics settle
+    -->
+    <pose>0 0 0.85 0 0 0</pose>
+
+    <!--
+      ============================================================
+      TORSO (base_link)
+
+      The torso is the root of the kinematic chain.
+      Center of Mass placed here, low for stability.
+      ============================================================
+    -->
+    <link name="torso">
+      <pose>0 0 0 0 0 0</pose>
+
+      <inertial>
+        <!--
+          Mass: 20 kg (typical for humanoid torso)
+          CoM placed at geometric center of torso
+        -->
+        <mass>20.0</mass>
+        <pose>0 0 0 0 0 0</pose>
+        <!--
+          Inertia tensor for a box: I = (1/12) × m × (h² + d²)
+          Torso dimensions: 0.3m × 0.2m × 0.5m
+        -->
+        <inertia>
+          <ixx>0.4667</ixx>   <!-- (1/12) × 20 × (0.2² + 0.5²) -->
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy>0.5667</iyy>   <!-- (1/12) × 20 × (0.3² + 0.5²) -->
+          <iyz>0.0</iyz>
+          <izz>0.2167</izz>   <!-- (1/12) × 20 × (0.3² + 0.2²) -->
+        </inertia>
+      </inertial>
+
+      <collision name="torso_collision">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <!--
+            Collision geometry: Box (simpler than visual for performance)
+            Dimensions: 0.3m wide × 0.2m deep × 0.5m tall
+          -->
+          <box>
+            <size>0.3 0.2 0.5</size>
+          </box>
+        </geometry>
+      </collision>
+
+      <visual name="torso_visual">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.3 0.2 0.5</size>
+          </box>
+        </geometry>
+        <material>
+          <!-- Gray torso -->
+          <ambient>0.5 0.5 0.5 1</ambient>
+          <diffuse>0.6 0.6 0.6 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <!--
+      ============================================================
+      PELVIS
+
+      Connects torso to legs. Provides hip rotation capability.
+      ============================================================
+    -->
+    <link name="pelvis">
+      <pose>0 0 -0.3 0 0 0</pose>
+
+      <inertial>
+        <mass>5.0</mass>
+        <pose>0 0 0 0 0 0</pose>
+        <inertia>
+          <ixx>0.02</ixx>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy>0.04</iyy>
+          <iyz>0.0</iyz>
+          <izz>0.04</izz>
+        </inertia>
+      </inertial>
+
+      <collision name="pelvis_collision">
+        <geometry>
+          <box>
+            <size>0.25 0.15 0.1</size>
+          </box>
+        </geometry>
+      </collision>
+
+      <visual name="pelvis_visual">
+        <geometry>
+          <box>
+            <size>0.25 0.15 0.1</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.4 0.4 0.4 1</ambient>
+          <diffuse>0.5 0.5 0.5 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <!-- Torso to Pelvis Joint (Fixed for simplicity) -->
+    <joint name="torso_to_pelvis" type="fixed">
+      <parent>torso</parent>
+      <child>pelvis</child>
+    </joint>
+
+    <!--
+      ============================================================
+      LEFT LEG
+
+      Upper leg (thigh) + Lower leg (shin) + Foot
+      Hip: 2-DoF (pitch + roll)
+      Knee: 1-DoF (pitch)
+      Ankle: 2-DoF (pitch + roll)
+      ============================================================
+    -->
+
+    <!-- Left Upper Leg (Thigh) -->
+    <link name="left_upper_leg">
+      <pose>0.1 0 -0.4 0 0 0</pose>
+
+      <inertial>
+        <mass>4.0</mass>
+        <pose>0 0 -0.15 0 0 0</pose>  <!-- CoM at center of thigh -->
+        <inertia>
+          <ixx>0.04</ixx>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy>0.04</iyy>
+          <iyz>0.0</iyz>
+          <izz>0.005</izz>
+        </inertia>
+      </inertial>
+
+      <collision name="left_upper_leg_collision">
+        <pose>0 0 -0.15 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.05</radius>
+            <length>0.3</length>
+          </cylinder>
+        </geometry>
+      </collision>
+
+      <visual name="left_upper_leg_visual">
+        <pose>0 0 -0.15 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.05</radius>
+            <length>0.3</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.3 0.3 0.6 1</ambient>
+          <diffuse>0.4 0.4 0.8 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <!-- Left Hip Joint (Pitch - forward/backward swing) -->
+    <joint name="left_hip_pitch" type="revolute">
+      <parent>pelvis</parent>
+      <child>left_upper_leg</child>
+      <pose>0 0 0.05 0 0 0</pose>  <!-- Joint at top of thigh -->
+      <axis>
+        <xyz>0 1 0</xyz>  <!-- Y-axis rotation (pitch) -->
+        <limit>
+          <!--
+            Hip pitch limits:
+            -60° to +30° (backward to forward swing)
+          -->
+          <lower>-1.05</lower>
+          <upper>0.52</upper>
+          <effort>100</effort>      <!-- Max torque in N·m -->
+          <velocity>5.0</velocity>  <!-- Max angular velocity in rad/s -->
+        </limit>
+        <dynamics>
+          <!--
+            Damping prevents oscillation, friction adds realism
+          -->
+          <damping>5.0</damping>
+          <friction>0.5</friction>
+        </dynamics>
+      </axis>
+    </joint>
+
+    <!-- Left Lower Leg (Shin) -->
+    <link name="left_lower_leg">
+      <pose>0.1 0 -0.7 0 0 0</pose>
+
+      <inertial>
+        <mass>3.0</mass>
+        <pose>0 0 -0.125 0 0 0</pose>
+        <inertia>
+          <ixx>0.02</ixx>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy>0.02</iyy>
+          <iyz>0.0</iyz>
+          <izz>0.003</izz>
+        </inertia>
+      </inertial>
+
+      <collision name="left_lower_leg_collision">
+        <pose>0 0 -0.125 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.04</radius>
+            <length>0.25</length>
+          </cylinder>
+        </geometry>
+      </collision>
+
+      <visual name="left_lower_leg_visual">
+        <pose>0 0 -0.125 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.04</radius>
+            <length>0.25</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.3 0.3 0.6 1</ambient>
+          <diffuse>0.4 0.4 0.8 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <!-- Left Knee Joint -->
+    <joint name="left_knee" type="revolute">
+      <parent>left_upper_leg</parent>
+      <child>left_lower_leg</child>
+      <pose>0 0 0.05 0 0 0</pose>
+      <axis>
+        <xyz>0 1 0</xyz>  <!-- Y-axis rotation (pitch) -->
+        <limit>
+          <!--
+            Knee only bends backward (0° to -130°)
+          -->
+          <lower>-2.27</lower>
+          <upper>0.0</upper>
+          <effort>80</effort>
+          <velocity>6.0</velocity>
+        </limit>
+        <dynamics>
+          <damping>4.0</damping>
+          <friction>0.3</friction>
+        </dynamics>
+      </axis>
+    </joint>
+
+    <!-- Left Foot -->
+    <link name="left_foot">
+      <!--
+        Foot positioned at bottom of lower leg
+        Foot is wide and long for stable support polygon
+      -->
+      <pose>0.1 0 -0.95 0 0 0</pose>
+
+      <inertial>
+        <mass>1.0</mass>
+        <pose>0 0 0 0 0 0</pose>
+        <inertia>
+          <ixx>0.002</ixx>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy>0.004</iyy>
+          <iyz>0.0</iyz>
+          <izz>0.005</izz>
+        </inertia>
+      </inertial>
+
+      <collision name="left_foot_collision">
+        <pose>0.02 0 -0.015 0 0 0</pose>  <!-- Slightly forward for balance -->
+        <geometry>
+          <!--
+            Foot dimensions: 0.2m long × 0.1m wide × 0.03m thick
+            Large footprint = stable support polygon
+          -->
+          <box>
+            <size>0.2 0.1 0.03</size>
+          </box>
+        </geometry>
+        <!--
+          Foot contact surface properties
+          Critical for walking stability
+        -->
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.9</mu>     <!-- High friction for grip -->
+              <mu2>0.9</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>1e6</kp>     <!-- Stiff contact -->
+              <kd>100</kd>     <!-- Some damping -->
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+
+      <visual name="left_foot_visual">
+        <pose>0.02 0 -0.015 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.1 0.03</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.2 0.2 0.5 1</ambient>
+          <diffuse>0.3 0.3 0.7 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <!-- Left Ankle Joint (Pitch) -->
+    <joint name="left_ankle_pitch" type="revolute">
+      <parent>left_lower_leg</parent>
+      <child>left_foot</child>
+      <pose>0 0 0.015 0 0 0</pose>
+      <axis>
+        <xyz>0 1 0</xyz>  <!-- Y-axis rotation (pitch) -->
+        <limit>
+          <!--
+            Ankle pitch: -30° to +45° (plantarflexion to dorsiflexion)
+          -->
+          <lower>-0.52</lower>
+          <upper>0.79</upper>
+          <effort>60</effort>
+          <velocity>4.0</velocity>
+        </limit>
+        <dynamics>
+          <damping>3.0</damping>
+          <friction>0.2</friction>
+        </dynamics>
+      </axis>
+    </joint>
+
+    <!--
+      ============================================================
+      RIGHT LEG (Mirror of left leg)
+      ============================================================
+    -->
+
+    <!-- Right Upper Leg (Thigh) -->
+    <link name="right_upper_leg">
+      <pose>-0.1 0 -0.4 0 0 0</pose>
+
+      <inertial>
+        <mass>4.0</mass>
+        <pose>0 0 -0.15 0 0 0</pose>
+        <inertia>
+          <ixx>0.04</ixx>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy>0.04</iyy>
+          <iyz>0.0</iyz>
+          <izz>0.005</izz>
+        </inertia>
+      </inertial>
+
+      <collision name="right_upper_leg_collision">
+        <pose>0 0 -0.15 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.05</radius>
+            <length>0.3</length>
+          </cylinder>
+        </geometry>
+      </collision>
+
+      <visual name="right_upper_leg_visual">
+        <pose>0 0 -0.15 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.05</radius>
+            <length>0.3</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.6 0.3 0.3 1</ambient>
+          <diffuse>0.8 0.4 0.4 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <!-- Right Hip Joint (Pitch) -->
+    <joint name="right_hip_pitch" type="revolute">
+      <parent>pelvis</parent>
+      <child>right_upper_leg</child>
+      <pose>0 0 0.05 0 0 0</pose>
+      <axis>
+        <xyz>0 1 0</xyz>
+        <limit>
+          <lower>-1.05</lower>
+          <upper>0.52</upper>
+          <effort>100</effort>
+          <velocity>5.0</velocity>
+        </limit>
+        <dynamics>
+          <damping>5.0</damping>
+          <friction>0.5</friction>
+        </dynamics>
+      </axis>
+    </joint>
+
+    <!-- Right Lower Leg (Shin) -->
+    <link name="right_lower_leg">
+      <pose>-0.1 0 -0.7 0 0 0</pose>
+
+      <inertial>
+        <mass>3.0</mass>
+        <pose>0 0 -0.125 0 0 0</pose>
+        <inertia>
+          <ixx>0.02</ixx>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy>0.02</iyy>
+          <iyz>0.0</iyz>
+          <izz>0.003</izz>
+        </inertia>
+      </inertial>
+
+      <collision name="right_lower_leg_collision">
+        <pose>0 0 -0.125 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.04</radius>
+            <length>0.25</length>
+          </cylinder>
+        </geometry>
+      </collision>
+
+      <visual name="right_lower_leg_visual">
+        <pose>0 0 -0.125 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.04</radius>
+            <length>0.25</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.6 0.3 0.3 1</ambient>
+          <diffuse>0.8 0.4 0.4 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <!-- Right Knee Joint -->
+    <joint name="right_knee" type="revolute">
+      <parent>right_upper_leg</parent>
+      <child>right_lower_leg</child>
+      <pose>0 0 0.05 0 0 0</pose>
+      <axis>
+        <xyz>0 1 0</xyz>
+        <limit>
+          <lower>-2.27</lower>
+          <upper>0.0</upper>
+          <effort>80</effort>
+          <velocity>6.0</velocity>
+        </limit>
+        <dynamics>
+          <damping>4.0</damping>
+          <friction>0.3</friction>
+        </dynamics>
+      </axis>
+    </joint>
+
+    <!-- Right Foot -->
+    <link name="right_foot">
+      <pose>-0.1 0 -0.95 0 0 0</pose>
+
+      <inertial>
+        <mass>1.0</mass>
+        <pose>0 0 0 0 0 0</pose>
+        <inertia>
+          <ixx>0.002</ixx>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy>0.004</iyy>
+          <iyz>0.0</iyz>
+          <izz>0.005</izz>
+        </inertia>
+      </inertial>
+
+      <collision name="right_foot_collision">
+        <pose>0.02 0 -0.015 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.1 0.03</size>
+          </box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.9</mu>
+              <mu2>0.9</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>1e6</kp>
+              <kd>100</kd>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+
+      <visual name="right_foot_visual">
+        <pose>0.02 0 -0.015 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.2 0.1 0.03</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.5 0.2 0.2 1</ambient>
+          <diffuse>0.7 0.3 0.3 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <!-- Right Ankle Joint (Pitch) -->
+    <joint name="right_ankle_pitch" type="revolute">
+      <parent>right_lower_leg</parent>
+      <child>right_foot</child>
+      <pose>0 0 0.015 0 0 0</pose>
+      <axis>
+        <xyz>0 1 0</xyz>
+        <limit>
+          <lower>-0.52</lower>
+          <upper>0.79</upper>
+          <effort>60</effort>
+          <velocity>4.0</velocity>
+        </limit>
+        <dynamics>
+          <damping>3.0</damping>
+          <friction>0.2</friction>
+        </dynamics>
+      </axis>
+    </joint>
+
+    <!--
+      ============================================================
+      JOINT STATE PUBLISHER PLUGIN
+
+      Publishes joint positions, velocities, efforts to ROS 2 topics
+      Required for ros2_control and TF integration
+      ============================================================
+    -->
+    <plugin filename="gz-sim-joint-state-publisher-system"
+            name="gz::sim::systems::JointStatePublisher">
+      <joint_name>left_hip_pitch</joint_name>
+      <joint_name>left_knee</joint_name>
+      <joint_name>left_ankle_pitch</joint_name>
+      <joint_name>right_hip_pitch</joint_name>
+      <joint_name>right_knee</joint_name>
+      <joint_name>right_ankle_pitch</joint_name>
+    </plugin>
+
+  </model>
+</sdf>

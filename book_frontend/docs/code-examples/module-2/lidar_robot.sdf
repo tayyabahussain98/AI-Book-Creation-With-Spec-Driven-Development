@@ -1,0 +1,359 @@
+<?xml version="1.0" ?>
+<!--
+  LiDAR Robot Model - Module 2 Sensor Example
+
+  This SDF demonstrates a mobile robot with GPU LiDAR sensor:
+  - 360° horizontal scan (640 rays)
+  - 16-channel vertical scan
+  - Realistic noise model (±3cm Gaussian)
+  - ROS 2 topic publishing via ros_gz_bridge
+
+  Topics published:
+  - /scan (sensor_msgs/LaserScan) - 2D laser scan
+  - /lidar/points (sensor_msgs/PointCloud2) - 3D point cloud
+
+  Launch: gz sim lidar_world.sdf
+  Bridge: ros2 run ros_gz_bridge parameter_bridge /scan@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan
+-->
+<sdf version="1.9">
+  <model name="lidar_robot">
+    <static>false</static>
+    <pose>0 0 0.1 0 0 0</pose>
+
+    <!--
+      ============================================================
+      BASE LINK
+
+      Mobile robot base with differential drive capability.
+      LiDAR mounted on top of this base.
+      ============================================================
+    -->
+    <link name="base_link">
+      <inertial>
+        <mass>10.0</mass>
+        <inertia>
+          <ixx>0.167</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.167</iyy>
+          <iyz>0</iyz>
+          <izz>0.25</izz>
+        </inertia>
+      </inertial>
+
+      <collision name="base_collision">
+        <geometry>
+          <box><size>0.4 0.3 0.1</size></box>
+        </geometry>
+      </collision>
+
+      <visual name="base_visual">
+        <geometry>
+          <box><size>0.4 0.3 0.1</size></box>
+        </geometry>
+        <material>
+          <ambient>0.3 0.3 0.3 1</ambient>
+          <diffuse>0.5 0.5 0.5 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <!--
+      ============================================================
+      LIDAR SENSOR LINK
+
+      Separate link for LiDAR mounting.
+      Elevated to clear obstacles and get better field of view.
+      ============================================================
+    -->
+    <link name="lidar_link">
+      <pose relative_to="base_link">0 0 0.15 0 0 0</pose>
+
+      <inertial>
+        <mass>0.5</mass>
+        <inertia>
+          <ixx>0.001</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.001</iyy>
+          <iyz>0</iyz>
+          <izz>0.001</izz>
+        </inertia>
+      </inertial>
+
+      <collision name="lidar_collision">
+        <geometry>
+          <cylinder>
+            <radius>0.05</radius>
+            <length>0.1</length>
+          </cylinder>
+        </geometry>
+      </collision>
+
+      <visual name="lidar_visual">
+        <geometry>
+          <cylinder>
+            <radius>0.05</radius>
+            <length>0.1</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.1 0.1 0.1 1</ambient>
+          <diffuse>0.2 0.2 0.2 1</diffuse>
+        </material>
+      </visual>
+
+      <!--
+        ============================================================
+        GPU LIDAR SENSOR
+
+        High-performance ray-casting sensor using GPU acceleration.
+        Publishes point clouds to Gazebo transport topics.
+        ============================================================
+      -->
+      <sensor name="gpu_lidar" type="gpu_lidar">
+        <!--
+          always_on: Sensor runs even when no subscribers
+          update_rate: How often sensor generates data (Hz)
+          visualize: Show rays in Gazebo GUI (useful for debugging)
+        -->
+        <always_on>true</always_on>
+        <update_rate>10</update_rate>
+        <visualize>true</visualize>
+
+        <!--
+          Topic name for Gazebo transport
+          This gets bridged to ROS 2 via ros_gz_bridge
+        -->
+        <topic>lidar</topic>
+
+        <lidar>
+          <scan>
+            <!--
+              HORIZONTAL SCAN CONFIGURATION
+              =============================
+
+              samples: Number of rays per horizontal sweep
+              - More samples = higher angular resolution
+              - Typical: 360-720 for 2D LiDAR, 640+ for 3D
+
+              resolution: Sample aggregation (1 = use every ray)
+
+              min_angle/max_angle: Angular range (radians)
+              - Full 360°: -π to +π
+              - Front 180°: -π/2 to +π/2
+            -->
+            <horizontal>
+              <samples>640</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.14159</min_angle>  <!-- -180° -->
+              <max_angle>3.14159</max_angle>   <!-- +180° -->
+            </horizontal>
+
+            <!--
+              VERTICAL SCAN CONFIGURATION (3D LiDAR)
+              ======================================
+
+              For 2D LiDAR, use samples=1 with min/max_angle=0.
+
+              For 3D LiDAR (like Velodyne VLP-16):
+              - samples: Number of vertical channels (16, 32, 64, 128)
+              - Field of view: Typical ±15° vertical for automotive
+
+              This example: 16-channel with ±15° vertical FOV
+            -->
+            <vertical>
+              <samples>16</samples>
+              <resolution>1</resolution>
+              <min_angle>-0.2618</min_angle>  <!-- -15° -->
+              <max_angle>0.2618</max_angle>   <!-- +15° -->
+            </vertical>
+          </scan>
+
+          <range>
+            <!--
+              RANGE CONFIGURATION
+              ===================
+
+              min: Minimum detection distance (meters)
+              - Objects closer than this are ignored
+              - Prevents self-detection (robot body)
+              - Typical: 0.05-0.3m
+
+              max: Maximum detection distance (meters)
+              - Beyond this, rays return no data
+              - Longer range = more GPU computation
+              - Typical: 10-100m for indoor/outdoor
+
+              resolution: Distance precision (meters)
+              - Smallest detectable distance difference
+              - Affects point cloud detail
+            -->
+            <min>0.1</min>
+            <max>30.0</max>
+            <resolution>0.01</resolution>
+          </range>
+
+          <!--
+            NOISE MODEL
+            ===========
+
+            Real LiDAR sensors have measurement noise.
+            Adding noise makes simulation more realistic
+            and trains AI models to handle imperfect data.
+
+            type="gaussian": Adds random Gaussian noise to each ray
+            - mean: Systematic bias (usually 0 for well-calibrated sensors)
+            - stddev: Standard deviation of noise (meters)
+
+            Typical real-world values:
+            - Indoor LiDAR: stddev 0.01-0.02m
+            - Outdoor automotive: stddev 0.02-0.05m
+          -->
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.03</stddev>  <!-- ±3cm noise typical for LiDAR -->
+          </noise>
+        </lidar>
+      </sensor>
+    </link>
+
+    <!-- Fixed joint connecting LiDAR to base -->
+    <joint name="lidar_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>lidar_link</child>
+    </joint>
+
+    <!--
+      ============================================================
+      WHEELS (for differential drive)
+      ============================================================
+    -->
+
+    <!-- Left Wheel -->
+    <link name="left_wheel">
+      <pose relative_to="base_link">0 0.2 0 1.5708 0 0</pose>
+      <inertial>
+        <mass>0.5</mass>
+        <inertia>
+          <ixx>0.001</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.001</iyy>
+          <iyz>0</iyz>
+          <izz>0.002</izz>
+        </inertia>
+      </inertial>
+      <collision name="left_wheel_collision">
+        <geometry>
+          <cylinder>
+            <radius>0.1</radius>
+            <length>0.05</length>
+          </cylinder>
+        </geometry>
+        <surface>
+          <friction>
+            <ode><mu>1.0</mu><mu2>1.0</mu2></ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name="left_wheel_visual">
+        <geometry>
+          <cylinder>
+            <radius>0.1</radius>
+            <length>0.05</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.1 0.1 0.1 1</ambient>
+          <diffuse>0.2 0.2 0.2 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="left_wheel_joint" type="revolute">
+      <parent>base_link</parent>
+      <child>left_wheel</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit><effort>10</effort><velocity>10</velocity></limit>
+      </axis>
+    </joint>
+
+    <!-- Right Wheel -->
+    <link name="right_wheel">
+      <pose relative_to="base_link">0 -0.2 0 1.5708 0 0</pose>
+      <inertial>
+        <mass>0.5</mass>
+        <inertia>
+          <ixx>0.001</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.001</iyy>
+          <iyz>0</iyz>
+          <izz>0.002</izz>
+        </inertia>
+      </inertial>
+      <collision name="right_wheel_collision">
+        <geometry>
+          <cylinder>
+            <radius>0.1</radius>
+            <length>0.05</length>
+          </cylinder>
+        </geometry>
+        <surface>
+          <friction>
+            <ode><mu>1.0</mu><mu2>1.0</mu2></ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name="right_wheel_visual">
+        <geometry>
+          <cylinder>
+            <radius>0.1</radius>
+            <length>0.05</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.1 0.1 0.1 1</ambient>
+          <diffuse>0.2 0.2 0.2 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="right_wheel_joint" type="revolute">
+      <parent>base_link</parent>
+      <child>right_wheel</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit><effort>10</effort><velocity>10</velocity></limit>
+      </axis>
+    </joint>
+
+    <!--
+      ============================================================
+      PLUGINS
+      ============================================================
+    -->
+
+    <!-- Differential Drive Controller -->
+    <plugin filename="gz-sim-diff-drive-system"
+            name="gz::sim::systems::DiffDrive">
+      <left_joint>left_wheel_joint</left_joint>
+      <right_joint>right_wheel_joint</right_joint>
+      <wheel_separation>0.4</wheel_separation>
+      <wheel_radius>0.1</wheel_radius>
+      <odom_publish_frequency>10</odom_publish_frequency>
+      <topic>cmd_vel</topic>
+    </plugin>
+
+    <!-- Joint State Publisher -->
+    <plugin filename="gz-sim-joint-state-publisher-system"
+            name="gz::sim::systems::JointStatePublisher">
+      <joint_name>left_wheel_joint</joint_name>
+      <joint_name>right_wheel_joint</joint_name>
+    </plugin>
+
+  </model>
+</sdf>
