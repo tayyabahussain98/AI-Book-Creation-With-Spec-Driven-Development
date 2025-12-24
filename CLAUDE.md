@@ -215,4 +215,5 @@ See `.specify/memory/constitution.md` for code quality, testing, performance, se
 - Markdown (CommonMark), TypeScript (Docusaurus config), Python 3.10+ (conceptual examples) + Docusaurus 3.9.2 (existing), Modules 1-3 content (prerequisites) (004-vla-module)
 
 ## Recent Changes
+- 004-vla-module: Added 5 complete chapters covering Vision-Language-Action systems, 12 architecture diagrams, 6 production Python code examples, full SDD artifacts (spec, plan, tasks, data-model, PHRs)
 - 003-isaac-ai-brain: Added Markdown (CommonMark), TypeScript (Docusaurus config), Python 3.10+ (Isaac ROS examples - conceptual only) + Docusaurus 3.9.2 (existing), Modules 1-2 content (prerequisites), NVIDIA Isaac Sim 4.0+ / Isaac ROS (reader environment - conceptual coverage)
