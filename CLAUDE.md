@@ -212,6 +212,7 @@ See `.specify/memory/constitution.md` for code quality, testing, performance, se
 ## Active Technologies
 - Markdown (CommonMark), TypeScript (Docusaurus config), Python 3.10+ (Isaac ROS examples - conceptual only) + Docusaurus 3.9.2 (existing), Modules 1-2 content (prerequisites), NVIDIA Isaac Sim 4.0+ / Isaac ROS (reader environment - conceptual coverage) (003-isaac-ai-brain)
 - Static files (Markdown chapters, diagram specifications, conceptual code snippets) (003-isaac-ai-brain)
+- Markdown (CommonMark), TypeScript (Docusaurus config), Python 3.10+ (conceptual examples) + Docusaurus 3.9.2 (existing), Modules 1-3 content (prerequisites) (004-vla-module)
 
 ## Recent Changes
 - 003-isaac-ai-brain: Added Markdown (CommonMark), TypeScript (Docusaurus config), Python 3.10+ (Isaac ROS examples - conceptual only) + Docusaurus 3.9.2 (existing), Modules 1-2 content (prerequisites), NVIDIA Isaac Sim 4.0+ / Isaac ROS (reader environment - conceptual coverage)
