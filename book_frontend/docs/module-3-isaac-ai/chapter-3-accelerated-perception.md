@@ -1,10 +1,6 @@
 ---
-id: chapter-3-accelerated-perception
-title: "Chapter 3: GPU-Accelerated Perception"
-sidebar_label: "3. GPU-Accelerated Perception"
 sidebar_position: 3
-description: Learn how Isaac ROS packages leverage NVIDIA GPUs to accelerate perception pipelines, achieving 5-50x speedups for image processing, DNN inference, and visual SLAM
-keywords: [isaac ros, gpu acceleration, perception, visual slam, cuvslam, tensorrt, cuda, real-time]
+title: Chapter 3 - GPU-Accelerated Perception
 ---
 
 # Chapter 3: GPU-Accelerated Perception

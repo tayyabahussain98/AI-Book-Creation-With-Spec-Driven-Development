@@ -1,10 +1,6 @@
 ---
-id: chapter-2-synthetic-data
-title: "Chapter 2: Synthetic Data Generation"
-sidebar_label: "2. Synthetic Data Generation"
 sidebar_position: 2
-description: Learn how NVIDIA Isaac Sim generates photorealistic synthetic datasets with automated ground truth for perception model training
-keywords: [synthetic data, domain randomization, isaac sim, replicator, perception training, dataset generation]
+title: Chapter 2 - Synthetic Data Generation
 ---
 
 # Chapter 2: Synthetic Data Generation

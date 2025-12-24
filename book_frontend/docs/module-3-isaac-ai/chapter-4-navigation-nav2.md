@@ -1,10 +1,6 @@
 ---
-id: chapter-4-navigation-nav2
-title: "Chapter 4: Autonomous Navigation with Nav2"
-sidebar_label: "4. Navigation with Nav2"
 sidebar_position: 4
-description: Learn how Nav2 (Navigation2) enables autonomous navigation for humanoid robots, with special focus on footstep planning, ZMP stability, and dynamic obstacle avoidance
-keywords: [nav2, navigation, humanoid, footstep planning, zmp, costmap, slam, amcl, obstacle avoidance]
+title: Chapter 4 - Autonomous Navigation with Nav2
 ---
 
 # Chapter 4: Autonomous Navigation with Nav2

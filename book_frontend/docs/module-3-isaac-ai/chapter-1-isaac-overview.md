@@ -1,6 +1,6 @@
 ---
 sidebar_position: 1
-title: "Chapter 1: NVIDIA Isaac Platform Overview"
+title: Chapter 1 - NVIDIA Isaac Platform Overview
 ---
 
 # Chapter 1: NVIDIA Isaac Platform Overview

@@ -1,10 +1,6 @@
 ---
-id: chapter-5-sim-to-real
-title: "Chapter 5: Sim-to-Real AI Transfer"
-sidebar_label: "5. Sim-to-Real Transfer"
 sidebar_position: 5
-description: Learn how reinforcement learning trains robot policies in Isaac Sim and how domain randomization enables safe deployment to real robots despite the reality gap
-keywords: [reinforcement learning, sim-to-real, domain randomization, reality gap, ppo, isaac sim, safe deployment]
+title: Chapter 5 - Sim-to-Real AI Transfer
 ---
 
 # Chapter 5: Sim-to-Real AI Transfer
