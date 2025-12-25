@@ -17,20 +17,28 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: book_frontend/package-lock.json
+          
+
+      - name: Change to frontend directory
+        run: cd book_frontend
 
       - name: Install dependencies
         run: npm ci
+        working-directory: book_frontend
 
       - name: Optimize images
         run: npm run optimize-images
+        working-directory: book_frontend
 
       - name: Build website
         run: npm run build
+        working-directory: book_frontend
 
       - name: Upload Build Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: build
+          path: book_frontend/build
 
   deploy:
     needs: build-and-deploy
